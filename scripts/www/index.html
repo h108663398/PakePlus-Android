@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>车辆进场计时器</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui}
+body{padding:14px;background:#f5f7fa;color:#222;max-width:650px;margin:0 auto}
+.box{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px #00000012}
+.title{font-size:18px;font-weight:bold;margin-bottom:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+input{flex:1;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;min-width:120px}
+button{padding:12px;border:none;border-radius:8px;font-size:15px;cursor:pointer}
+.btn-addcar{background:#2563eb;color:#fff}
+.btn-record{background:#10b981;color:#fff}
+.btn-delcar{background:#ef4444;color:#fff}
+.btn-export{background:#f97316;color:#fff}
+.btn-clear{background:#666;color:#fff}
+.car-card{border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin:10px 0}
+.car-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.car-name{font-weight:bold;font-size:16px}
+.car-count{color:#2563eb}
+.log-item{padding:8px 0;border-bottom:1px solid #eee;font-size:14px}
+.time{color:#666;font-size:12px}
+.log-wrap{max-height:220px;overflow-y:auto;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="title">添加车辆</div>
+  <div class="row">
+    <input type="text" id="carNo" placeholder="输入车牌号，例如：鄂J88888">
+    <button class="btn-addcar" onclick="addCar()">新增车辆</button>
+  </div>
+</div>
+
+<div id="carList"></div>
+
+<div class="box">
+  <div class="row">
+    <button class="btn-export" onclick="exportAll()">导出全部记录CSV</button>
+    <button class="btn-clear" onclick="clearAllData()">清空所有数据</button>
+  </div>
+</div>
+
+<script>
+// 数据结构：[{carNo:"车牌", records:[{time:"", remark:""}]}]
+let carData = JSON.parse(localStorage.getItem("carTrackData")) || [];
+const carListEl = document.getElementById("carList");
+const carNoEl = document.getElementById("carNo");
+
+function saveData(){
+  localStorage.setItem("carTrackData", JSON.stringify(carData));
+}
+
+function formatTime(){
+  const t = new Date();
+  const y = t.getFullYear();
+  const m = String(t.getMonth()+1).padStart(2,'0');
+  const d = String(t.getDate()).padStart(2,'0');
+  const h = String(t.getHours()).padStart(2,'0');
+  const mi = String(t.getMinutes()).padStart(2,'0');
+  const s = String(t.getSeconds()).padStart(2,'0');
+  return `${y}-${m}-${d} ${h}:${mi}:${s}`;
+}
+
+function addCar(){
+  const carNo = carNoEl.value.trim();
+  if(!carNo){alert("请输入车牌号");return;}
+  // 判断是否重复车牌
+  const exist = carData.find(c=>c.carNo === carNo);
+  if(exist){alert("该车牌已存在");return;}
+  carData.push({carNo, records:[]});
+  carNoEl.value = "";
+  saveData();
+  render();
+}
+
+// 记录一条进场
+function addRecord(index){
+  const remark = prompt("填写备注（如：罐车、料号，可不填）","");
+  if(remark === null) return;
+  carData[index].records.push({
+    time: formatTime(),
+    remark: remark.trim()
+  });
+  saveData();
+  render();
+}
+
+// 删除该车
+function deleteCar(index){
+  if(!confirm(`确定删除【${carData[index].carNo}】以及它所有记录？`)) return;
+  carData.splice(index,1);
+  saveData();
+  render();
+}
+
+// 导出单台车
+function exportOneCar(index){
+  const car = carData[index];
+  let csv = "车牌号,进场时间,备注\n";
+  car.records.forEach(r=>{
+    csv += `"${car.carNo}","${r.time}","${r.remark}"\n`;
+  })
+  downloadCsv(csv, `${car.carNo}_进场记录.csv`);
+}
+
+// 导出全部
+function exportAll(){
+  let csv = "车牌号,进场时间,备注\n";
+  carData.forEach(car=>{
+    car.records.forEach(r=>{
+      csv += `"${car.carNo}","${r.time}","${r.remark}"\n`;
+    })
+  })
+  downloadCsv(csv, `全部车辆进场记录.csv`);
+}
+
+function downloadCsv(content, filename){
+  const blob = new Blob([content], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function clearAllData(){
+  if(!confirm("⚠️ 全部车辆和记录都会清空，无法恢复！")) return;
+  carData = [];
+  saveData();
+  render();
+}
+
+function render(){
+  carListEl.innerHTML = "";
+  carData.forEach((car, idx)=>{
+    const div = document.createElement("div");
+    div.className = "car-card";
+    div.innerHTML = `
+      <div class="car-head">
+        <span class="car-name">${car.carNo}</span>
+        <span class="car-count">进场次数：${car.records.length}</span>
+      </div>
+      <div class="row">
+        <button class="btn-record" onclick="addRecord(${idx})">➕ 记录进场</button>
+        <button class="btn-export" onclick="exportOneCar(${idx})">导出该车</button>
+        <button class="btn-delcar" onclick="deleteCar(${idx})">删除车辆</button>
+      </div>
+      <div class="log-wrap">
+        ${car.records.length ===0 ? '<div style="color:#999;padding:4px">暂无进场记录</div>' : ""}
+        ${car.records.map(r=>`
+          <div class="log-item">
+            <div>${r.remark || "无备注"}</div>
+            <div class="time">${r.time}</div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+    carListEl.appendChild(div);
+  })
+}
+
+render();
+</script>
+</body>
+</html>
