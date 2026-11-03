@@ -1,0 +1,23 @@
+{
+    "name": "车辆进场登记",
+    "appid": "",
+    "description": "工地车辆进场登记，自动记录时间戳，支持备注、导出CSV",
+    "version": "1.0.0",
+    "versionCode": 1,
+    "plus": {
+        "distribute": {
+            "android": {
+                "package": "com.gongdi.carrecord",
+                "versionName": "1.0.0",
+                "versionCode": 1,
+                "permissions": [
+                    "<uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>",
+                    "<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>",
+                    "<uses-permission android:name=\"android.permission.READ_MEDIA_IMAGES\"/>",
+                    "<uses-permission android:name=\"android.permission.READ_MEDIA_VIDEO\"/>",
+                    "<uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\"/>"
+                ]
+            }
+        }
+    }
+}
